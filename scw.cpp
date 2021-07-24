@@ -1,5 +1,5 @@
-#pragma GCC diagnostic push
-#include <StdDiagnosticIgnore.hpp>
+#include <cstddef>
+#include <string>
 
 #include <Windows.h>
 #include <stdio.h>
@@ -8,65 +8,13 @@
 #include <vector>
 #include <fstream>
 
-#pragma GCC diagnostic pop
-
-class mystr {
-	public:
-	char * ptr;
-	int count;
-	mystr() {
-		ptr = new char[2048];
-		ptr[0] = 0;
-		count = 0;
-	}
-	mystr(mystr & obj) {
-		ptr = new char[2048];
-		char* ptr2 = obj.ptr;
-		while ((*ptr++ = *ptr2++) != 0);
-		count = obj.count;
-	}
-	mystr(const char * str) {
-		ptr = new char[2048];
-		count = 0;
-		char * bptr = ptr;
-		while ((*bptr++ = *str++) != 0) count++;
-	}
-	void EndAdd(const char * What) {
-		char * Where = ptr + count;
-		while ((*Where++ = *What++) != 0) count++;
-	}
-	void EndDelete(int i) {
-		count -= i;
-		if (count<0) count = 0;
-		ptr[count] = 0;
-	}
-	~mystr() {
-		delete[] ptr;
-	}
-	char & LastChar() {
-		return ptr[count-1];
-	}
-};
-
-int PosCharEnd(const char * where, char what, int before = -1) {
+int PosCharEnd(const char * where, char what) {
 	int pos = -1;
 	const char * where_ptr = where;			
-	if (before != -1) {
-		int count = 0;
-		while (*where_ptr != 0) {				
-			if (count >= before) break;		
-			if (*where_ptr == what) pos = where_ptr - where;
-			where_ptr++;
-			count++;
-		}
+	while (*where_ptr != 0) {				
+		if (*where_ptr == what) pos = where_ptr - where;
+		where_ptr++;
 	}
-	else {
-		while (*where_ptr != 0) {				
-			if (*where_ptr == what) pos = where_ptr - where;
-			where_ptr++;
-		}
-	}
-	
 	return pos;
 }
 
@@ -93,15 +41,12 @@ int main(int argc, char * argv[]) {
 	
 	SetConsoleTextAttribute(hConsole, invertWORD(textAtr));
 	
-	//if (textAtr != 0x70) SetConsoleTextAttribute(hConsole, 0x70);
-	//else SetConsoleTextAttribute(hConsole, 0x07);
-	
-	mystr color;
-	for (int i = 0; i < columns-1; i++) color.EndAdd("~");
-	printf("%s\n",color.ptr);
+	std::string color(columns - 1, '~');
+	printf("%s", color.c_str());
 	
 	SetConsoleTextAttribute(hConsole, textAtr);
-	
+	printf("\n");
+
 	using namespace std;
 	
 	vector<pair<string, string>> pairs;
@@ -132,28 +77,29 @@ int main(int argc, char * argv[]) {
 	
 	
 	if (argc >= 2) {
-		mystr command;
-		if ((argc==2) && strcmp(argv[1],"-source") == 0) {
-			command.EndAdd("npp D:\\_MPS\\_CPP\\__Projects\\SimpleCppBuild\\Build2_bc.cpp");
-			SetConsoleOutputCP(1251);
-			printf("%s\n",command.ptr);
-			system(command.ptr);
-			return 0;
-		}
+		std::string command;
 		
-		command.EndAdd("gcc ");
-		mystr argv1(argv[1]);
-		FILE * f = fopen(argv1.ptr, "r");
+		command.append("gcc ");
+		std::string argv1(argv[1]);
+		FILE * f = fopen(argv1.c_str(), "r");
+
 		if (f == nullptr) {
-			printf("No file %s | try make ",argv1.ptr);
+			printf("No file %s | try make ", argv1.c_str());
+			
 			int cnt = 0;
-			if (argv1.LastChar() == '.') {argv1.EndAdd("cpp"); cnt += 3;}
-			else {argv1.EndAdd(".cpp"); cnt += 4;}
-			printf("%s\n",argv1.ptr);
-			if ((f = fopen(argv1.ptr, "r")) == nullptr) {
-				printf("No file %s | return to ",argv1.ptr);
-				argv1.EndDelete(cnt);
-				printf("%s\n",argv1.ptr);
+			if (argv1.back() == '.') {
+				argv1.append("cpp"); 
+				cnt += 3;
+			} else {
+				argv1.append(".cpp");
+				cnt += 4;
+			}
+			printf("%s\n", argv1.c_str());
+
+			if ((f = fopen(argv1.c_str(), "r")) == nullptr) {
+				printf("No file %s | return to ", argv1.c_str());
+				argv1.erase(argv1.length() - cnt, cnt);
+				printf("%s\n", argv1.c_str());
 			}
 			else {
 				fclose(f);
@@ -162,34 +108,35 @@ int main(int argc, char * argv[]) {
 		else {
 			fclose(f);
 		}
-		command.EndAdd(argv1.ptr);
-		command.EndAdd(" -o ");
+		command.append(argv1);
+		command.append(" -o ");
 		
-		command.EndAdd(argv1.ptr);
-		int pos = PosCharEnd(command.ptr, '.');
-		if (pos != -1) command.EndDelete(command.count - pos);
+		command.append(argv1);
+
+		int pos = PosCharEnd(command.c_str(), '.');
+		if (pos != -1) command.erase(pos, command.length() - pos);
+
 		for (int i = 2; i < argc; i++) {
-			command.EndAdd(" ");
+			command.append(" ");
 			
 			bool find = false;
 			
 			for (pair<string, string> & p : pairs) {
 				if (strcmp(argv[i], p.first.c_str()) == 0) {
-					command.EndAdd(p.second.c_str());
+					command.append(p.second);
 					find = true;
 					break;
 				}
 			}
 			
-			if (!find) command.EndAdd(argv[i]);
+			if (!find) command.append(argv[i]);
 		}
-		printf("%s\n", command.ptr);
-		system(command.ptr);
+		printf("%s\n", command.c_str());
+		system(command.c_str());
 	}
 	else if (argc == 1) {
-		printf("C/CPP fast compiler and builder\n");
-		printf("Use: BuildS [filename] [additional_flags]\n");
-		printf("Use \"BuildS -source\" to open source file\n");
+		printf("CPP Compiler Wrapper\n");
+		printf("Use: .\\scw [filename] [additional_flags]\n");
 		printf("Defined build flags:\n");
 		for (pair<string, string> & p : pairs)
 			printf("[%s] => %s\n", p.first.c_str(), p.second.c_str());
